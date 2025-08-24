@@ -1,0 +1,157 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install Python dependencies
+      run: |
+        cd apps/orchestrator
+        pip install -r requirements.txt
+    
+    - name: Install Node.js dependencies
+      run: |
+        cd apps/gateway
+        npm ci
+        cd ../../apps/frontend
+        npm ci
+    
+    - name: Run tests
+      run: |
+        cd apps/orchestrator
+        python -m pytest tests/
+        cd ../../apps/gateway
+        npm test
+        cd ../../apps/frontend
+        npm test
+
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Build and push Gateway image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./apps/gateway
+        file: ./apps/gateway/Dockerfile.prod
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/gateway:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Build and push Orchestrator image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./apps/orchestrator
+        file: ./apps/orchestrator/Dockerfile.prod
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/orchestrator:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Build and push Workers image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./apps/workers
+        file: ./apps/workers/Dockerfile.prod
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/workers:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Build and push Frontend image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./apps/frontend
+        file: ./apps/frontend/Dockerfile.prod
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'latest'
+    
+    - name: Configure kubectl
+      run: |
+        echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > kubeconfig
+        export KUBECONFIG=kubeconfig
+    
+    - name: Update image tags in Kubernetes manifests
+      run: |
+        sed -i "s|ai-automation/gateway:latest|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/gateway:${{ github.sha }}|g" k8s/deployments.yml
+        sed -i "s|ai-automation/orchestrator:latest|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/orchestrator:${{ github.sha }}|g" k8s/deployments.yml
+        sed -i "s|ai-automation/workers:latest|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/workers:${{ github.sha }}|g" k8s/deployments.yml
+        sed -i "s|ai-automation/frontend:latest|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend:${{ github.sha }}|g" k8s/deployments.yml
+    
+    - name: Deploy to Kubernetes
+      run: |
+        kubectl apply -f k8s/namespace.yml
+        kubectl apply -f k8s/configmap.yml
+        kubectl apply -f k8s/secrets.yml
+        kubectl apply -f k8s/deployments.yml
+        kubectl apply -f k8s/services.yml
+        kubectl apply -f k8s/ingress.yml
+    
+    - name: Wait for deployment to complete
+      run: |
+        kubectl rollout status deployment/gateway -n ai-automation --timeout=300s
+        kubectl rollout status deployment/orchestrator -n ai-automation --timeout=300s
+        kubectl rollout status deployment/workers -n ai-automation --timeout=300s
+        kubectl rollout status deployment/frontend -n ai-automation --timeout=300s
+    
+    - name: Verify deployment
+      run: |
+        kubectl get pods -n ai-automation
+        kubectl get services -n ai-automation
+        kubectl get ingress -n ai-automation

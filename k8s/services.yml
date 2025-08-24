@@ -1,0 +1,165 @@
+---
+# API Gateway Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway-service
+  namespace: ai-automation
+spec:
+  selector:
+    app: gateway
+  ports:
+  - name: http
+    port: 80
+    targetPort: 3000
+  type: ClusterIP
+
+---
+# Orchestrator Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: orchestrator-service
+  namespace: ai-automation
+spec:
+  selector:
+    app: orchestrator
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8000
+  type: ClusterIP
+
+---
+# Workers Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: workers-service
+  namespace: ai-automation
+spec:
+  selector:
+    app: workers
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8000
+  type: ClusterIP
+
+---
+# Frontend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: ai-automation
+spec:
+  selector:
+    app: frontend
+  ports:
+  - name: http
+    port: 80
+    targetPort: 3000
+  type: ClusterIP
+
+---
+# PostgreSQL Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: ai-automation
+spec:
+  selector:
+    app: postgres
+  ports:
+  - name: postgresql
+    port: 5432
+    targetPort: 5432
+  type: ClusterIP
+
+---
+# Redis Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: ai-automation
+spec:
+  selector:
+    app: redis
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+  type: ClusterIP
+
+---
+# NATS Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: nats-service
+  namespace: ai-automation
+spec:
+  selector:
+    app: nats
+  ports:
+  - name: nats
+    port: 4222
+    targetPort: 4222
+  - name: nats-http
+    port: 8222
+    targetPort: 8222
+  type: ClusterIP
+
+---
+# MinIO Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-service
+  namespace: ai-automation
+spec:
+  selector:
+    app: minio
+  ports:
+  - name: minio-api
+    port: 9000
+    targetPort: 9000
+  - name: minio-console
+    port: 9001
+    targetPort: 9001
+  type: ClusterIP
+
+---
+# Prometheus Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-service
+  namespace: ai-automation
+spec:
+  selector:
+    app: prometheus
+  ports:
+  - name: prometheus
+    port: 9090
+    targetPort: 9090
+  type: ClusterIP
+
+---
+# Grafana Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-service
+  namespace: ai-automation
+spec:
+  selector:
+    app: grafana
+  ports:
+  - name: grafana
+    port: 3000
+    targetPort: 3000
+  type: ClusterIP

@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-automation-config
+  namespace: ai-automation
+data:
+  # Database configuration
+  DATABASE_URL: "postgresql://ai_user:${POSTGRES_PASSWORD}@postgres-service:5432/ai_automation"
+  
+  # Redis configuration
+  REDIS_URL: "redis://:${REDIS_PASSWORD}@redis-service:6379"
+  
+  # NATS configuration
+  NATS_URL: "nats://nats-service:4222"
+  
+  # MinIO configuration
+  MINIO_ENDPOINT: "minio-service:9000"
+  MINIO_ACCESS_KEY: "${MINIO_ROOT_USER}"
+  MINIO_SECRET_KEY: "${MINIO_ROOT_PASSWORD}"
+  
+  # Application configuration
+  ENVIRONMENT: "production"
+  CORS_ORIGINS: "https://your-domain.com"
+  WORKER_CONCURRENCY: "4"
+  WORKER_REPLICAS: "2"
+  
+  # Monitoring configuration
+  PROMETHEUS_ENABLED: "true"
+  GRAFANA_PASSWORD: "${GRAFANA_PASSWORD}"

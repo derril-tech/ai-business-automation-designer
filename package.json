@@ -1,0 +1,44 @@
+{
+  "name": "ai-business-automation-designer",
+  "version": "0.1.0",
+  "description": "AI-powered business automation designer with CrewAI",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:gateway\" \"npm run dev:orchestrator\" \"npm run dev:workers\"",
+    "dev:frontend": "cd apps/frontend && npm run dev",
+    "dev:gateway": "cd apps/gateway && npm run start:dev",
+    "dev:orchestrator": "cd apps/orchestrator && python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000",
+    "dev:workers": "cd apps/workers && celery -A celery_app worker --loglevel=info",
+    "build": "npm run build:sdk && npm run build:frontend && npm run build:gateway",
+    "build:sdk": "cd packages/sdk && npm run build",
+    "build:frontend": "cd apps/frontend && npm run build",
+    "build:gateway": "cd apps/gateway && npm run build",
+    "install:all": "npm install && cd apps/frontend && npm install && cd ../../apps/gateway && npm install && cd ../../packages/sdk && npm install",
+    "docker:up": "docker-compose -f docker-compose.dev.yml up -d",
+    "docker:down": "docker-compose -f docker-compose.dev.yml down",
+    "docker:logs": "docker-compose -f docker-compose.dev.yml logs -f",
+    "lint": "npm run lint:frontend && npm run lint:gateway && npm run lint:sdk",
+    "lint:frontend": "cd apps/frontend && npm run lint",
+    "lint:gateway": "cd apps/gateway && npm run lint",
+    "lint:sdk": "cd packages/sdk && npm run lint",
+    "test": "npm run test:frontend && npm run test:gateway && npm run test:sdk",
+    "test:frontend": "cd apps/frontend && npm run test",
+    "test:gateway": "cd apps/gateway && npm run test",
+    "test:sdk": "cd packages/sdk && npm run test",
+    "clean": "npm run clean:frontend && npm run clean:gateway && npm run clean:sdk",
+    "clean:frontend": "cd apps/frontend && rm -rf .next node_modules",
+    "clean:gateway": "cd apps/gateway && rm -rf dist node_modules",
+    "clean:sdk": "cd packages/sdk && npm run clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}
